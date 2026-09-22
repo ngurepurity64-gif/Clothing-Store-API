@@ -1,3 +1,9 @@
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+
+DATABASE_URL = os.getenv("DATABASE_URL")
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import create_engine, Column, Integer, String, Numeric
@@ -5,10 +11,6 @@ from sqlalchemy.orm import declarative_base, sessionmaker
 
 # Create the FastAPI application
 app = FastAPI()
-
-# PostgreSQL database connection
-# Keep your existing PostgreSQL password here
-DATABASE_URL = "postgresql+psycopg://postgres:4455ttyy@localhost:5432/clothingstore"
 
 # Create the database engine
 engine = create_engine(DATABASE_URL)
