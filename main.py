@@ -2,8 +2,15 @@ from fastapi import FastAPI, HTTPException, Depends
 from sqlalchemy.orm import Session
 
 from database import get_db
-from models import Clothes
-from schemas import ClothesCreate, ClothesResponse
+from models import Clothes, Customers, Orders, OrderItems
+from schemas import (
+    ClothesCreate,
+    ClothesResponse,
+    CustomerCreate,
+    CustomerResponse,
+    OrderCreate,
+    OrderResponse
+)
 
 
 # Create the FastAPI application
@@ -19,11 +26,8 @@ def health():
 # GET all clothes
 @app.get("/clothes", response_model=list[ClothesResponse])
 def get_clothes(db: Session = Depends(get_db)):
-    # Get all clothes from the database
-    clothes_list = db.query(Clothes).all()
-
-    # Return the database records
-    return clothes_list
+    clothes = db.query(Clothes).all()
+    return clothes
 
 
 # GET one clothing item by ID
@@ -32,12 +36,10 @@ def get_clothing(
     clothing_id: int,
     db: Session = Depends(get_db)
 ):
-    # Find the clothing item
     clothing = db.query(Clothes).filter(
         Clothes.clothing_id == clothing_id
     ).first()
 
-    # Return 404 if it does not exist
     if clothing is None:
         raise HTTPException(
             status_code=404,
@@ -53,7 +55,6 @@ def create_clothes(
     clothes_data: ClothesCreate,
     db: Session = Depends(get_db)
 ):
-    # Create a new clothing record
     new_clothes = Clothes(
         name=clothes_data.name,
         size=clothes_data.size,
@@ -61,13 +62,8 @@ def create_clothes(
         price=clothes_data.price
     )
 
-    # Add the record
     db.add(new_clothes)
-
-    # Save it to PostgreSQL
     db.commit()
-
-    # Get the generated ID
     db.refresh(new_clothes)
 
     return new_clothes
@@ -80,28 +76,22 @@ def update_clothing(
     clothes_data: ClothesCreate,
     db: Session = Depends(get_db)
 ):
-    # Find the clothing item
     clothing = db.query(Clothes).filter(
         Clothes.clothing_id == clothing_id
     ).first()
 
-    # Return 404 if it does not exist
     if clothing is None:
         raise HTTPException(
             status_code=404,
             detail="Clothing item not found"
         )
 
-    # Update the clothing details
     clothing.name = clothes_data.name
     clothing.size = clothes_data.size
     clothing.quantity = clothes_data.quantity
     clothing.price = clothes_data.price
 
-    # Save the changes
     db.commit()
-
-    # Refresh the record
     db.refresh(clothing)
 
     return clothing
@@ -113,25 +103,82 @@ def delete_clothing(
     clothing_id: int,
     db: Session = Depends(get_db)
 ):
-    # Find the clothing item
     clothing = db.query(Clothes).filter(
         Clothes.clothing_id == clothing_id
     ).first()
 
-    # Return 404 if it does not exist
     if clothing is None:
         raise HTTPException(
             status_code=404,
             detail="Clothing item not found"
         )
 
-    # Delete the clothing item
     db.delete(clothing)
-
-    # Save the change
     db.commit()
 
-    # Return confirmation
     return {
         "message": "Clothing item deleted successfully"
     }
+
+
+# POST - Add a customer
+@app.post("/customers", response_model=CustomerResponse)
+def create_customer(
+    customer_data: CustomerCreate,
+    db: Session = Depends(get_db)
+):
+    new_customer = Customers(
+        name=customer_data.name,
+        phone=customer_data.phone
+    )
+
+    db.add(new_customer)
+    db.commit()
+    db.refresh(new_customer)
+
+    return new_customer
+
+
+# GET all customers
+@app.get("/customers", response_model=list[CustomerResponse])
+def get_customers(db: Session = Depends(get_db)):
+    customers = db.query(Customers).all()
+
+    return customers
+
+
+# POST - Add an order
+@app.post("/orders")
+def create_order(
+    order_data: OrderCreate,
+    db: Session = Depends(get_db)
+):
+    new_order = Orders(
+        customer_id=order_data.customer_id,
+        order_date=order_data.order_date
+    )
+
+    db.add(new_order)
+    db.commit()
+    db.refresh(new_order)
+
+    return new_order
+
+
+# GET one order with its items
+@app.get("/orders/{order_id}", response_model=OrderResponse)
+def get_order(
+    order_id: int,
+    db: Session = Depends(get_db)
+):
+    order = db.query(Orders).filter(
+        Orders.order_id == order_id
+    ).first()
+
+    if order is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Order not found"
+        )
+
+    return order
